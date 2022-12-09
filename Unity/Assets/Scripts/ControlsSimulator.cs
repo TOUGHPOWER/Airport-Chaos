@@ -58,7 +58,7 @@ public class ControlsSimulator : MonoBehaviour
         string keyspressed = "";
         for(int i=0; i < NUM_SAVE_KEYS; i++)
             keyspressed += lastKeysPressed[i];
-        print(keyspressed);
+        /*print(keyspressed);
         print("--------------------");
         if(CheckIfCalled(0))
         {
@@ -66,7 +66,7 @@ public class ControlsSimulator : MonoBehaviour
             
             
             print(phone);
-        }
+        }*/
 
 
     }

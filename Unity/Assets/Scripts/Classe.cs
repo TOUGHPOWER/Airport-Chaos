@@ -2,5 +2,6 @@ public enum Classe
 {
     A,
     B,
-    C
+    C,
+    Any
 }
