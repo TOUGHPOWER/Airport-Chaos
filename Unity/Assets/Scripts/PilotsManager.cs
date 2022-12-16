@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 using System;
+using Random = UnityEngine.Random;
+using TMPro;
 
 public class PilotsManager : MonoBehaviour
 {
 
-    private const float START_SHIFT = 8;
-    private const float FINISH_SHIFT = 20;
+    private const float START_SHIFT = 20;
+    private const float FINISH_SHIFT = 5;
 
+    [InfoBox("Tmer in seconds")]
     [SerializeField] private float ShiftTimer;
     
     [SerializeField] private AirplaneData[] airplanes;
@@ -17,20 +20,32 @@ public class PilotsManager : MonoBehaviour
     [SerializeField] private Location[] Runways;
     [SerializeField] private Location[] Garages;
 
-    [SerializeField, InfoBox("X:Time in hours(0.01 = 1h)\nY:Spawn rate in units per min(0.1 = 1 unit)")]
+    [SerializeField, InfoBox("X:Time in hours(0.01 = 1h)\nY:Spawn rate in units per 20 min(0.1 = 1 unit)")]
     private AnimationCurve rushHours;
 
-    private List<Pilot> OnAir;
-    private List<Pilot> OnRunway;
-    private List<Pilot> OnGarage;
+    [SerializeField] private List<Pilot> OnAir;
+    [SerializeField] private List<Pilot> OnRunway;
+    [SerializeField] private List<Pilot> OnGarage;
+    [SerializeField] private TextMeshProUGUI clock;
+
+    public float ShiftDuration
+    {
+        get
+        {
+            if(START_SHIFT < FINISH_SHIFT)
+                return FINISH_SHIFT - START_SHIFT;
+            else
+            {
+                return (24 - START_SHIFT) + FINISH_SHIFT;
+            }
+        }
+    }
 
     public float CurrentCurveTime
     {
         get
         {
-            float shiftTime = 0.01f * (FINISH_SHIFT-START_SHIFT);
-
-            return (START_SHIFT * 0.01f)+((timer*shiftTime)/ShiftTimer);
+            return (CurrentRealTime.Hours * 0.01f);
         }
     }
 
@@ -38,17 +53,19 @@ public class PilotsManager : MonoBehaviour
     {
         get
         {
-            return TimeSpan.FromHours(CurrentCurveTime*100);
+            float currentTime = (START_SHIFT )+((timer*ShiftDuration)/ShiftTimer);
+            
+            return TimeSpan.FromHours(currentTime);
         }
     }
     
-    /*public float SpawnRate
+    public float SpawnRate
     {
         get
         {
-            
+            return rushHours.Evaluate(CurrentCurveTime) * 10;
         }
-    }*/
+    }
 
     private float timer;
 
@@ -59,16 +76,35 @@ public class PilotsManager : MonoBehaviour
         OnGarage = new List<Pilot>();
         timer = 0;
 
+        int pilotsInAirport = Random.Range(0, Garages.Length);
+
+
+        for(int i = 0; i< pilotsInAirport; i++)
+        {
+            GeneratePlane(OnGarage);
+
+            int garage = 0;
+            do
+            {
+                garage = Random.Range(0, Garages.Length);
+            }while(Garages[garage].IsOccupied);
+
+            Garages[garage].TryToMovePilotIn(OnGarage[OnGarage.Count-1]);
+        }
+
+        StartCoroutine(Spawn());
     }
 
     void Update()
     {
         timer += Time.deltaTime;
-        if(timer >= ShiftTimer)
+        if(CurrentRealTime.Hours == FINISH_SHIFT)
         {
             FinishShift();
         }
-        Debug.Log(CurrentRealTime);
+        string s = string.Format("{0,2:D2}:{1,2:D2}", CurrentRealTime.Hours , CurrentRealTime.Minutes);
+        if(clock != null)
+            clock.text = s;
     }
 
     private void FinishShift()
@@ -76,10 +112,20 @@ public class PilotsManager : MonoBehaviour
         Debug.Log("Finish");
     }
 
-    private void GeneratePlaine()
+    private IEnumerator Spawn()
+    {
+        while(true)
+        {
+            yield return new WaitForSeconds(((ShiftTimer/ShiftDuration)/3)/SpawnRate);
+            GeneratePlane(OnAir);
+            print("Spawn");
+        }
+    }
+
+    private void GeneratePlane( List<Pilot> pilots)
     {
         List<string> numbersInUse = new List<string>();
-        AirplaneData airplane = airplanes[UnityEngine.Random.Range(0, airplanes.Length)];
+        AirplaneData airplane = airplanes[Random.Range(0, airplanes.Length)];
 
         foreach(Pilot pilot in OnAir)
             numbersInUse.Add(pilot.Number);
@@ -88,6 +134,7 @@ public class PilotsManager : MonoBehaviour
         foreach(Pilot pilot in OnGarage)
             numbersInUse.Add(pilot.Number);
         
-        OnAir.Add(new Pilot( airplane, numbersInUse, pilotsName));
+
+        pilots.Add(new Pilot( airplane, numbersInUse, pilotsName));
     }
 }

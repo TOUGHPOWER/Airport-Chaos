@@ -28,6 +28,9 @@ public struct Location
 
             canMoveIn = true;
             crash = false;
+        }else
+        {
+            crash = true;
         }
 
         return (canMoveIn, crash);
