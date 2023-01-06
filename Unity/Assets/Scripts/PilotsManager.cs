@@ -16,16 +16,17 @@ public class PilotsManager : MonoBehaviour
     [SerializeField] private float ShiftTimer;
     
     [SerializeField] private AirplaneData[] airplanes;
-    [SerializeField] private string[] pilotsName;
+    [SerializeField] private string[] pilotsFirstName;
+    [SerializeField] private string[] pilotsLastName;
     [SerializeField] private Location[] Runways;
     [SerializeField] private Location[] Garages;
 
     [SerializeField, InfoBox("X:Time in hours(0.01 = 1h)\nY:Spawn rate in units per 20 min(0.1 = 1 unit)")]
     private AnimationCurve rushHours;
 
-    [SerializeField] private List<Pilot> OnAir;
-    [SerializeField] private List<Pilot> OnRunway;
-    [SerializeField] private List<Pilot> OnGarage;
+    [field: SerializeField] public List<Pilot> OnAir { get; private set; }
+    [field: SerializeField] public List<Pilot> OnRunway { get; private set; }
+    [field: SerializeField] public List<Pilot> OnGarage { get; private set; }
     [SerializeField] private TextMeshProUGUI clock;
 
     public float ShiftDuration
@@ -118,7 +119,7 @@ public class PilotsManager : MonoBehaviour
         {
             yield return new WaitForSeconds(((ShiftTimer/ShiftDuration)/3)/SpawnRate);
             GeneratePlane(OnAir);
-            print("Spawn");
+            print("Spawn: " + OnAir[OnAir.Count-1].Number);
         }
     }
 
@@ -133,8 +134,12 @@ public class PilotsManager : MonoBehaviour
             numbersInUse.Add(pilot.Number);
         foreach(Pilot pilot in OnGarage)
             numbersInUse.Add(pilot.Number);
-        
+        numbersInUse.Add("10000");
+        numbersInUse.Add("20000");
+        numbersInUse.Add("30000");
+        numbersInUse.Add("40000");
 
-        pilots.Add(new Pilot( airplane, numbersInUse, pilotsName));
+
+        pilots.Add(new Pilot( airplane, numbersInUse, pilotsFirstName, pilotsLastName));
     }
 }

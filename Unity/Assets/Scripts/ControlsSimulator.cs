@@ -2,17 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
+using TMPro;
 
 public class ControlsSimulator : MonoBehaviour
 {
     private const int NUM_SAVE_KEYS = 5;
-    private const char NULL_KEY = 'n';
+    private const char NULL_KEY = '-';
+    public bool InCall { get; private set; }
 
     [SerializeField]
-    private string[] phoneNumbers;
+    private PilotsManager manager;
+    [SerializeField]
+    private TextMeshProUGUI numbersPressed;
     
     private char[] lastKeysPressed;
-    
+
+    private Pilot pilotOncALL;
     
     [ButtonGroup("1"), LabelText("1")]
     private void B1(){Pressed('1');}
@@ -43,7 +48,7 @@ public class ControlsSimulator : MonoBehaviour
     private void Start()
     {
         lastKeysPressed = new char[NUM_SAVE_KEYS];
-        
+        InCall = false;
         ResetRegister();
     }
 
@@ -58,27 +63,76 @@ public class ControlsSimulator : MonoBehaviour
         string keyspressed = "";
         for(int i=0; i < NUM_SAVE_KEYS; i++)
             keyspressed += lastKeysPressed[i];
-        /*print(keyspressed);
-        print("--------------------");
-        if(CheckIfCalled(0))
+
+        numbersPressed.text = keyspressed;
+
+        if (!keyspressed.Contains(NULL_KEY) && !InCall)
         {
-            string phone = "Called: " + phoneNumbers[0];
-            
-            
-            print(phone);
-        }*/
-
-
+            if (CheckIfCalled(keyspressed))
+            {
+                Debug.Log("Called " + keyspressed);
+                Debug.Log("Hi, this is " + pilotOncALL.PilotName + " from the "
+                    + pilotOncALL.Airplane.AirplaneName + ", Requesting to "
+                    + pilotOncALL.Need.ToString());
+                InCall = true;
+                ResetRegister();
+            }
+        }else if (InCall && !keyspressed.Contains(NULL_KEY)) 
+        {
+            CheckComand(keyspressed);
+        }
     }
 
-    private bool CheckIfCalled(int index)
+    private bool CheckIfCalled(string number)
     {
-        bool called = (phoneNumbers[index].CompareTo(new string(lastKeysPressed)) == 0);
+        foreach (Pilot pilot in manager.OnAir)
+            if (pilot.Number == number) 
+            {
+                pilotOncALL = pilot;
+                return true;
+            } 
+        foreach (Pilot pilot in manager.OnRunway)
+            if (pilot.Number == number)
+            {
+                pilotOncALL = pilot;
+                return true;
+            }
+        foreach (Pilot pilot in manager.OnGarage)
+            if (pilot.Number == number)
+            {
+                pilotOncALL = pilot;
+                return true;
+            }
 
-        if(called)
-            ResetRegister();
+        return false;
+    }
 
-        return called;
+    private void CheckComand(string number)
+    {
+        switch (number)
+        {
+            case "10000":
+                Debug.Log("Repeat Request");
+                Debug.Log("I want to " + pilotOncALL.Need.ToString());
+                break;
+            case "20000":
+                Debug.Log("Ask name of airplane");
+                Debug.Log("I'm piloting the " + pilotOncALL.Airplane.AirplaneName);
+                break;
+            case "30000":
+                InCall = false;
+                pilotOncALL = null;
+                Debug.Log("Confirm request");
+                break;
+            case "40000":
+                InCall = false;
+                pilotOncALL = null;
+                Debug.Log("Deny Request");
+                break;
+            default:
+                break;
+        }
+        ResetRegister();
     }
 
     public void Pressed(char key)
