@@ -71,6 +71,19 @@ public class ControlsSimulator : MonoBehaviour
 
     }
 
+    void OnMessageArrived(string msg)
+    {
+        Debug.Log("Message arrived: " + msg);
+        // up
+        // down
+        // 1
+        // 2
+        // ...
+    }
+
+    //controller.SendMessage("ring");
+    //controller.SendMessage("stop");
+
     private bool CheckIfCalled(int index)
     {
         bool called = (phoneNumbers[index].CompareTo(new string(lastKeysPressed)) == 0);
