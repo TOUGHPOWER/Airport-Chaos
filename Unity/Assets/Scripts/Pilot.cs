@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 public class Pilot
 {
     public string PilotName {get;}
@@ -16,7 +17,7 @@ public class Pilot
         string number = "";
         do
         {
-            int numberInt = Random.Range(10000, 100000);
+            int numberInt = Random.Range(1000, 10000);
             number = numberInt.ToString();
         }while(numbersInUse.Contains(number));
 
