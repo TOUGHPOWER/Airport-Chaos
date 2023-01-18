@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 using TMPro;
+using System.Linq;
 
 public class ControlsSimulator : MonoBehaviour
 {
-    private const int NUM_SAVE_KEYS = 5;
+    private const int NUM_SAVE_KEYS = 4;
     private const char NULL_KEY = '-';
     public bool InCall { get; private set; }
+    private bool checkNeeds;
 
     [SerializeField]
     private PilotsManager manager;
@@ -17,7 +19,7 @@ public class ControlsSimulator : MonoBehaviour
     
     private char[] lastKeysPressed;
 
-    private Pilot pilotOncALL;
+    //private Pilot manager.PilotOnCall;
     
     [ButtonGroup("1"), LabelText("1")]
     private void B1(){Pressed('1');}
@@ -49,6 +51,7 @@ public class ControlsSimulator : MonoBehaviour
     {
         lastKeysPressed = new char[NUM_SAVE_KEYS];
         InCall = false;
+        checkNeeds = false;
         ResetRegister();
     }
 
@@ -60,27 +63,41 @@ public class ControlsSimulator : MonoBehaviour
 
     void Update()
     {
-        string keyspressed = "";
+        string keysPressed = "";
         for(int i=0; i < NUM_SAVE_KEYS; i++)
-            keyspressed += lastKeysPressed[i];
+            keysPressed += lastKeysPressed[i];
 
-        numbersPressed.text = keyspressed;
+        numbersPressed.text = keysPressed;
 
-        if (!keyspressed.Contains(NULL_KEY) && !InCall)
+        /*if (!keysPressed.Contains(NULL_KEY) && !InCall)
         {
-            if (CheckIfCalled(keyspressed))
+            if (CheckIfCalled(keysPressed))
             {
-                Debug.Log("Called " + keyspressed);
-                Debug.Log("Hi, this is " + pilotOncALL.PilotName + " from the "
-                    + pilotOncALL.Airplane.AirplaneName + ", Requesting to "
-                    + pilotOncALL.Need.ToString());
+                Debug.Log("Called " + keysPressed);
+                Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
+                    + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
+                    + manager.PilotOnCall.Need.ToString());
                 InCall = true;
                 ResetRegister();
             }
-        }else if (InCall && !keyspressed.Contains(NULL_KEY)) 
+        }else */if (InCall && !keysPressed.Contains(NULL_KEY)) 
         {
-            CheckComand(keyspressed);
+            if(!checkNeeds)
+                CheckCommand(keysPressed);
+            else
+                CheckNeeds(keysPressed);
         }
+    }
+
+    [Button]
+    public void PickUpPhone()
+    {
+        manager.PilotOnCall = manager.Calling.First();
+        Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
+                + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
+                + manager.PilotOnCall.Need.ToString());
+        InCall = true;
+        ResetRegister();
     }
 
     private bool CheckIfCalled(string number)
@@ -88,51 +105,85 @@ public class ControlsSimulator : MonoBehaviour
         foreach (Pilot pilot in manager.OnAir)
             if (pilot.Number == number) 
             {
-                pilotOncALL = pilot;
+                manager.PilotOnCall = pilot;
                 return true;
             } 
         foreach (Pilot pilot in manager.OnRunway)
             if (pilot.Number == number)
             {
-                pilotOncALL = pilot;
+                manager.PilotOnCall = pilot;
                 return true;
             }
         foreach (Pilot pilot in manager.OnGarage)
             if (pilot.Number == number)
             {
-                pilotOncALL = pilot;
+                manager.PilotOnCall = pilot;
                 return true;
             }
 
         return false;
     }
 
-    private void CheckComand(string number)
+    private void CheckCommand(string number)
     {
         switch (number)
         {
-            case "10000":
+            case "1000":
                 Debug.Log("Repeat Request");
-                Debug.Log("I want to " + pilotOncALL.Need.ToString());
+                Debug.Log("I want to " + manager.PilotOnCall.Need.ToString());
                 break;
-            case "20000":
+            case "2000":
                 Debug.Log("Ask name of airplane");
-                Debug.Log("I'm piloting the " + pilotOncALL.Airplane.AirplaneName);
+                Debug.Log("I'm piloting the " + manager.PilotOnCall.Airplane.AirplaneName);
                 break;
-            case "30000":
-                InCall = false;
-                pilotOncALL = null;
+            case "3000":
                 Debug.Log("Confirm request");
+                if(manager.PilotOnCall.Need == Request.Park)
+                    checkNeeds = true;
+                else
+                {
+                    if(manager.PilotOnCall.Need == Request.Land)
+                        manager.TryToLand(manager.PilotOnCall);
+
+                    InCall = false;
+                    manager.PilotOnCall = null;
+                }
                 break;
-            case "40000":
+            case "4000":
                 InCall = false;
-                pilotOncALL = null;
+                manager.PilotOnCall = null;
                 Debug.Log("Deny Request");
                 break;
             default:
+                Debug.Log("I don't recognize that order");
                 break;
         }
         ResetRegister();
+    }
+
+    private void CheckNeeds(string orderDetails)
+    {
+        switch(orderDetails)
+        {
+            case "*100":
+                Debug.Log("Go to the 1st garage.");
+                break;
+            case "*200":
+                Debug.Log("Go to the 2nd garage.");
+                break;
+            case "*300":
+                Debug.Log("Go to the 3rd garage.");
+                break;
+            case "*400":
+                Debug.Log("Go to the 4th garage.");
+                break;
+            case "*500":
+                Debug.Log("Go to the 5th garage.");
+                break;
+            default:
+                Debug.Log("I don't recognize that order");
+                break;
+        }
     }
 
     public void Pressed(char key)
