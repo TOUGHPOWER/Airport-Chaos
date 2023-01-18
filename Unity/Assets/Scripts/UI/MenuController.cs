@@ -39,6 +39,10 @@ public class MenuController : MonoBehaviour
             {
                 menuManager.UnpauseGame();
             }
+            else if(Input.anyKeyDown && menuManager.IsInEvaluation == true) 
+            {
+                menuManager.CloseEvaluation();
+            }
             else if (Input.GetKeyDown(KeyCode.Alpha1))
             {
                 menuManager.LoadGame();
