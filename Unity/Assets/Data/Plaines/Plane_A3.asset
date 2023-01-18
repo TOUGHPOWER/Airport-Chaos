@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <classe>k__BackingField: 0
   <AirplaneName>k__BackingField: Little Thunder
+  Sprite: {fileID: 21300000, guid: c8d74450f88ac9f4a85288c0ca762c90, type: 3}

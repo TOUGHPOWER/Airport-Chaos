@@ -9,8 +9,9 @@ public class Pilot
     public AirplaneData Airplane{get;}
     public string Number{get;}
     public Request Need { get; set; }
-    
-    public Pilot(AirplaneData data, List<string> numbersInUse, string[] firstNames, string[] lastNames)
+    public ScenePilot PilotInScene{ get; private set; }
+
+    public Pilot(AirplaneData data, List<string> numbersInUse, string[] firstNames, string[] lastNames, ScenePilot pilotPrefab, Vector3 position2Spawn)
     {
         Airplane = data;
 
@@ -26,5 +27,9 @@ public class Pilot
         PilotName = firstNames[Random.Range(0, firstNames.Length)] + " " + lastNames[Random.Range(0, lastNames.Length)];
 
         Need = Request.Land;
+
+        PilotInScene = MonoBehaviour.Instantiate(pilotPrefab, position2Spawn, new Quaternion());
+
+        PilotInScene.SetAirplaneSprite(Airplane.Sprite);
     }
 }

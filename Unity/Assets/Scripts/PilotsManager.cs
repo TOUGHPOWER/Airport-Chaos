@@ -12,17 +12,26 @@ public class PilotsManager : MonoBehaviour
 
     private const float START_SHIFT = 20;
     private const float FINISH_SHIFT = 5;
+    private const float OFFSET = 10;
     private const int PILOT_CALL_STRIKES = 3;
+    private const int MAX_CRASH_STRIKES = 3;
 
     [InfoBox("Tmer in seconds")]
     [SerializeField] private float ShiftTimer;
     [SerializeField] private float timeWaitingOnCall;
     [SerializeField] private float timeBetweenCalls;
-    public float Score { get => ((totalPilotsToday - missedCalls) / totalPilotsToday) * 100; }
+    [SerializeField] private float timeInRunWay;
+    [SerializeField] private float timeInGarage;
+    public float Score { get => ((totalRequests*3 - missedCalls) / totalRequests*3) * 100; }
     private int missedCalls;
-    private int totalPilotsToday;
+    private int totalRequests;
+    private int strikes;
     public Pilot PilotOnCall { get; set; }
-
+    [SerializeField]
+    private bool testing;
+    [SerializeField] private ScenePilot pilotPrefab;
+    [SerializeField] private Transform takeOffLocation;
+    [SerializeField] private Transform startLocation;
     [SerializeField] private AirplaneData[] airplanes;
     [SerializeField] private string[] pilotsFirstName;
     [SerializeField] private string[] pilotsLastName;
@@ -37,6 +46,8 @@ public class PilotsManager : MonoBehaviour
     [field: SerializeField, ReadOnly] public List<Pilot> OnGarage { get; private set; }
     [field: SerializeField, ReadOnly] public List<Pilot> Calling { get; private set; }
     [SerializeField] private TextMeshProUGUI clock;
+    [SerializeField, ShowIf("testing"), Button]
+    private void Call() => GeneratePlane(OnAir, startLocation);
 
     public float ShiftDuration
     {
@@ -86,7 +97,7 @@ public class PilotsManager : MonoBehaviour
         OnGarage = new List<Pilot>();
         timer = 0;
         missedCalls = 0;
-        totalPilotsToday = 0;
+        totalRequests = 0;
         PilotOnCall = null;
         Calling = new List<Pilot>();
 
@@ -105,12 +116,17 @@ public class PilotsManager : MonoBehaviour
 
             Garages[garage].TryToMovePilotIn(OnGarage[OnGarage.Count-1]);
         }*/
-
-        StartCoroutine(Spawn());
+        if(!testing)
+            StartCoroutine(Spawn());
     }
 
     void Update()
     {
+        if(strikes >= MAX_CRASH_STRIKES)
+        {
+            //end Game
+            Debug.Log("Lose");
+        }
         timer += Time.deltaTime;
         if (CurrentRealTime.Hours == FINISH_SHIFT)
         {
@@ -131,12 +147,12 @@ public class PilotsManager : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(((ShiftTimer / ShiftDuration) / 3) / SpawnRate);
-            GeneratePlane(OnAir);
+            GeneratePlane(OnAir, startLocation);
             print("Spawn: " + OnAir[OnAir.Count - 1].Number);
         }
     }
 
-    private void GeneratePlane(List<Pilot> pilots)
+    private void GeneratePlane(List<Pilot> pilots, Transform spawnTransform)
     {
         List<string> numbersInUse = new List<string>();
         AirplaneData airplane = airplanes[Random.Range(0, airplanes.Length)];
@@ -152,26 +168,45 @@ public class PilotsManager : MonoBehaviour
         numbersInUse.Add("3000");
         numbersInUse.Add("4000");
 
-        totalPilotsToday++;
-        pilots.Add(new Pilot(airplane, numbersInUse, pilotsFirstName, pilotsLastName));
+        totalRequests++;
+        pilots.Add(new Pilot(airplane, numbersInUse, pilotsFirstName, pilotsLastName, pilotPrefab, spawnTransform.position));
         StartCoroutine(Call(pilots.Last()));
     }
 
     private IEnumerator Call(Pilot pilot)
     {
-        Calling.Add(pilot);
+        Request initialNeed = pilot.Need;
         for (int i = 0; i < PILOT_CALL_STRIKES; i++)
         {
             Calling.Add(pilot);
-            yield return new WaitForSeconds(timeWaitingOnCall);
+            Coroutine c =  StartCoroutine(Wait(timeWaitingOnCall));
+
+            yield return new WaitUntil(()=>(c== null || !Calling.Contains(pilot)));
+
+            if(c!= null)
+                StopCoroutine(c);
+
             if (Calling.Contains(pilot) && PilotOnCall != pilot)
                 Calling.Remove(pilot);
-            else
+            else if(initialNeed != pilot.Need)
                 yield break;
+                
+            missedCalls++;
             yield return new WaitForSeconds(timeBetweenCalls);
         }
 
         DefaultAction(pilot);
+    }
+
+    private IEnumerator Wait(float time)
+    {
+        yield return new WaitForSeconds(time);
+    }
+
+    public void DenyRequest(Pilot pilot)
+    {
+        Calling.Remove(pilot);
+        missedCalls++;
     }
 
     private void DefaultAction(Pilot pilot)
@@ -184,6 +219,7 @@ public class PilotsManager : MonoBehaviour
                 break;
             case Request.TakeOff:
                 //takes off
+                TryToTakeOf(pilot);
                 break;
             case Request.Park:
                 //parks
@@ -192,17 +228,28 @@ public class PilotsManager : MonoBehaviour
                 break;
         }
 
-        missedCalls++;
+        strikes++;
     }
 
     private void Crash(Pilot p1, Pilot p2)
     {
+        Debug.Log("Crashed 2");
         RemovePilotFromGame(p1);
+
         RemovePilotFromGame(p2);
+
+        strikes++;
+    }
+    private void Crash(Pilot p1)
+    {
+        RemovePilotFromGame(p1);
+
+        strikes++;
     }
 
     private void RemovePilotFromGame(Pilot pilot)
     {
+        Destroy(pilot.PilotInScene.gameObject);
         if(Calling.Contains(pilot))
             Calling.Remove(pilot);
         
@@ -215,13 +262,13 @@ public class PilotsManager : MonoBehaviour
         if(OnGarage.Contains(pilot))
             OnGarage.Remove(pilot);
         
-        foreach(Location loc in Runways)
-        {
-            if(loc.PilotInLocation == pilot)
-                loc.RemovePilot();
-        }
+        RemoveFromLocation(Runways, pilot);
+        RemoveFromLocation(Garages, pilot);
+    }
 
-        foreach(Location loc in Garages)
+    private void RemoveFromLocation(Location[] locations, Pilot pilot)
+    {
+        foreach(Location loc in locations)
         {
             if(loc.PilotInLocation == pilot)
                 loc.RemovePilot();
@@ -245,10 +292,95 @@ public class PilotsManager : MonoBehaviour
                 }
             }
 
-            (bool canMove, bool crash) = Runways[runwayToMove].TryToMovePilotIn(pilot);
-
-            if(!canMove || crash)
-                Crash(pilot, Runways[runwayToMove].PilotInLocation);
+            pilot.Need = Request.Park;
+            StartCoroutine(MovePlane( Runways, pilot, runwayToMove));
         }
+    }
+
+    public void TryToTakeOf(Pilot pilot)
+    {
+        if(OnGarage.Contains(pilot))
+        {
+            OnGarage.Remove(pilot);
+
+            RemoveFromLocation(Garages, pilot);
+            StartCoroutine(MovePlane(pilot));
+        }
+    }
+
+    public void TryToPark(Pilot pilot, int i)
+    {
+        if(OnRunway.Contains(pilot))
+        {
+            OnRunway.Remove(pilot);
+            OnGarage.Add(pilot);
+            RemoveFromLocation(Runways, pilot);
+            pilot.Need = Request.TakeOff;
+            StartCoroutine(MovePlane( Garages, pilot, i));
+        }
+        
+    }
+
+    private IEnumerator MovePlane(Location[] locations, Pilot pilot, int index)
+    {
+        (bool canMove, bool crash) = locations[index].TryToMovePilotIn(pilot);
+
+        pilot.PilotInScene.GoToTraget(locations[index].Position.position);
+
+        print("can move: " + canMove);
+        print("crash: " + crash);
+        yield return new WaitForSeconds(0.1f);
+        yield return new WaitUntil(()=>pilot.PilotInScene.InTarget);
+        print("arrived");
+        if(crash)
+            Crash(pilot, locations[index].PilotInLocation);
+        else if(!canMove)
+            Crash(pilot);
+        else
+            StartCoroutine(NextRequest(pilot));
+        yield break;
+    }
+
+    private IEnumerator NextRequest(Pilot pilot)
+    {
+        float timeToWait = 0;
+        totalRequests++;
+        switch(pilot.Need)
+        {
+            case Request.Park:
+                timeToWait = timeInRunWay;
+                break;
+            case Request.TakeOff:
+                timeToWait = timeInGarage;
+                break;
+            default:
+                break;
+        }
+
+        timeToWait = Random.Range(timeToWait-OFFSET, timeToWait+OFFSET);
+        if(timeToWait < 0)
+            timeToWait = 0;
+
+        yield return new WaitForSeconds(timeToWait);
+
+        StartCoroutine(Call(pilot));
+    }
+
+    private IEnumerator MovePlane(Pilot pilot)
+    {
+        //(bool canMove, bool crash) = locations[index].TryToMovePilotIn(pilot);
+
+        pilot.PilotInScene.GoToTraget(takeOffLocation.position);
+
+        /*print("can move: " + canMove);
+        print("crash: " + crash);
+
+        if(!canMove || crash)
+            Crash(pilot, locations[index].PilotInLocation);*/
+        yield return new WaitForSeconds(0.1f);
+        yield return new WaitUntil(()=>pilot.PilotInScene.InTarget);
+        RemovePilotFromGame(pilot);
+
+        yield break;
     }
 }

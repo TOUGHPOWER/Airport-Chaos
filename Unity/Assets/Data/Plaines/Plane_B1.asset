@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <classe>k__BackingField: 1
   <AirplaneName>k__BackingField: Raft
+  Sprite: {fileID: 21300000, guid: d16bbb4baba941d43a0d07391e2ef3bd, type: 3}

@@ -5,7 +5,7 @@ using Sirenix.OdinInspector;
 using TMPro;
 using System.Linq;
 
-public class ControlsSimulator : MonoBehaviour
+public class Controller : MonoBehaviour
 {
     private const int NUM_SAVE_KEYS = 4;
     private const char NULL_KEY = '-';
@@ -16,36 +16,10 @@ public class ControlsSimulator : MonoBehaviour
     private PilotsManager manager;
     [SerializeField]
     private TextMeshProUGUI numbersPressed;
-    
+    public bool Ringing{ get => (manager.Calling.Count > 0 && !InCall)||
+        (manager.Calling.Count > 1 && InCall); }
     private char[] lastKeysPressed;
 
-    //private Pilot manager.PilotOnCall;
-    
-    [ButtonGroup("1"), LabelText("1")]
-    private void B1(){Pressed('1');}
-
-    [ButtonGroup("1"), LabelText("2")]
-    private void B2(){Pressed('2');}
-    [ButtonGroup("1"), LabelText("3")]
-    private void B3(){Pressed('3');}
-    [ButtonGroup("2"), LabelText("4")]
-    private void B4(){Pressed('4');}
-    [ButtonGroup("2"), LabelText("5")]
-    private void B5(){Pressed('5');}
-    [ButtonGroup("2"), LabelText("6")]
-    private void B6(){Pressed('6');}
-    [ButtonGroup("3"), LabelText("7")]
-    private void B7(){Pressed('7');}
-    [ButtonGroup("3"), LabelText("8")]
-    private void B8(){Pressed('8');}
-    [ButtonGroup("3"), LabelText("9")]
-    private void B9(){Pressed('9');}
-    [ButtonGroup("4"), LabelText("*")]
-    private void BAsterisco(){Pressed('*');}
-    [ButtonGroup("4"), LabelText("0")]
-    private void B0(){Pressed('0');}
-    [ButtonGroup("4"), LabelText("#")]
-    private void BCardinal(){Pressed('#');}
 
     private void Start()
     {
@@ -89,16 +63,22 @@ public class ControlsSimulator : MonoBehaviour
         }
     }
 
-    [Button]
     public void PickUpPhone()
     {
-        manager.PilotOnCall = manager.Calling.First();
-        Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
-                + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
-                + manager.PilotOnCall.Need.ToString());
-        InCall = true;
-        ResetRegister();
+        if(Ringing)
+        {
+            manager.PilotOnCall = manager.Calling.First();
+            Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
+                    + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
+                    + manager.PilotOnCall.Need.ToString());
+            InCall = true;
+            ResetRegister();
+        }
     }
+     public void PutPhoneDown()
+     {
+
+     }
 
     private bool CheckIfCalled(string number)
     {
@@ -144,13 +124,17 @@ public class ControlsSimulator : MonoBehaviour
                 {
                     if(manager.PilotOnCall.Need == Request.Land)
                         manager.TryToLand(manager.PilotOnCall);
+                    else
+                        manager.TryToTakeOf(manager.PilotOnCall);
 
+                    manager.Calling.Remove(manager.PilotOnCall);
                     InCall = false;
                     manager.PilotOnCall = null;
                 }
                 break;
             case "4000":
                 InCall = false;
+                manager.DenyRequest(manager.PilotOnCall);
                 manager.PilotOnCall = null;
                 Debug.Log("Deny Request");
                 break;
@@ -166,24 +150,22 @@ public class ControlsSimulator : MonoBehaviour
         switch(orderDetails)
         {
             case "*100":
-                Debug.Log("Go to the 1st garage.");
-                break;
             case "*200":
-                Debug.Log("Go to the 2nd garage.");
-                break;
             case "*300":
-                Debug.Log("Go to the 3rd garage.");
-                break;
             case "*400":
-                Debug.Log("Go to the 4th garage.");
-                break;
             case "*500":
-                Debug.Log("Go to the 5th garage.");
+                manager.TryToPark(manager.PilotOnCall,int.Parse(orderDetails[1].ToString())-1);
+                Debug.Log("Go to the garage.");
+                manager.Calling.Remove(manager.PilotOnCall);
+                InCall = false;
+                manager.PilotOnCall = null;
+                checkNeeds = false;
                 break;
             default:
                 Debug.Log("I don't recognize that order");
                 break;
         }
+        ResetRegister();
     }
 
     public void Pressed(char key)
