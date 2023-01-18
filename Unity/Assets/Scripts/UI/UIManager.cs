@@ -41,7 +41,7 @@ public class UIManager : MonoBehaviour
     }
     public void IncreaseStrikes(int currentStrike) 
     {
-        strikes[currentStrike].SetActive(true);
+        strikes[currentStrike - 1].SetActive(true);
     }
     public void ResetStrikes() 
     {
@@ -50,11 +50,11 @@ public class UIManager : MonoBehaviour
             strike.SetActive(false);
         }
     }
-    public void UpdateScore(int score)
+    public void UpdateFinalScore(int score)
     {
         scoreText.text = score.ToString();
     }
-    public void UpdateClock(float clock)
+    public void UpdateClock(string clock)
     {
         clockText.text = clock.ToString();
     }
@@ -76,10 +76,11 @@ public class UIManager : MonoBehaviour
     }
     public void ShowEvaluation(int score, int days, string grade)
     {
-        UpdateDays(days);
-        UpdateScore(score);
-        UpdateGrade(grade);
         evaluationUI.SetActive(true);
+        UpdateDays(days);
+        UpdateFinalScore(score);
+        UpdateGrade(grade);
+        
     }
     public void HideEvaluation()
     {
