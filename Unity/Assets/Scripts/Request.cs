@@ -6,5 +6,6 @@ public enum Request
 {
     Land,
     TakeOff,
-    Park
+    Park,
+    Nothing
 }

@@ -5,33 +5,27 @@ using Sirenix.OdinInspector;
 [Serializable]
 public struct Location
 {
-    public Pilot PilotInLocation { get; private set; }
+    public Pilot PilotInLocation { get; set; }
 
-    [SerializeField] private string name;
+    [field: SerializeField] public string Name{ get; private set; }
     [SerializeField] private Classe classeRestriction;
     [field: SerializeField] public Transform Position{ get; set; }
-    public bool IsOccupied {get => (PilotInLocation != null);}
 
 /*[SerializeField, ShowIf("IsOccupied"), InfoBox("Occupied by:"), ReadOnly]
 private string OcupiedName;*/
 
-public (bool, bool) TryToMovePilotIn(Pilot pilot)
+public bool TryToMovePilotIn(Pilot pilot)
     {
         bool canMoveIn = false;
-        bool crash = false;
         
-        if(IsOccupied)
-        {
-            crash = true;
-        }else if(pilot.Airplane.classe <= classeRestriction)
+        if(pilot.Airplane.classe <= classeRestriction)
         {
             PilotInLocation = pilot;
-
+            MonoBehaviour.print(Name);
             canMoveIn = true;
-            crash = false;
         }
 
-        return (canMoveIn, crash);
+        return canMoveIn;
     }
 
     public void RemovePilot()=>PilotInLocation = null;

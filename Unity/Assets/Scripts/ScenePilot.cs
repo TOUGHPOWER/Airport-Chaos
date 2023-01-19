@@ -11,7 +11,7 @@ public class ScenePilot : MonoBehaviour
     private float normalSpeed;
     [SerializeField]
     private SpriteRenderer airplane;
-    public bool InTarget{ get => agent.remainingDistance < 0.5f; }
+    public bool InTarget{ get => agent.remainingDistance < 1f; }
 
     public void GoToTraget(Vector3 pos)
     {

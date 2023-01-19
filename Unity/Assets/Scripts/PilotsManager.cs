@@ -22,7 +22,7 @@ public class PilotsManager : MonoBehaviour
     [SerializeField] private float timeBetweenCalls;
     [SerializeField] private float timeInRunWay;
     [SerializeField] private float timeInGarage;
-    public float Score { get => ((totalRequests*3 - missedCalls) / totalRequests*3) * 100; }
+    public float Score { get => ((totalRequests * 3 - missedCalls) / totalRequests * 3) * 100; }
     private int missedCalls;
     private int totalRequests;
     private int strikes;
@@ -30,13 +30,16 @@ public class PilotsManager : MonoBehaviour
     [SerializeField]
     private bool testing;
     [SerializeField] private ScenePilot pilotPrefab;
+    [SerializeField] private GameObject explotionPrefab;
     [SerializeField] private Transform takeOffLocation;
     [SerializeField] private Transform startLocation;
     [SerializeField] private AirplaneData[] airplanes;
     [SerializeField] private string[] pilotsFirstName;
     [SerializeField] private string[] pilotsLastName;
     [SerializeField] private Location[] Runways;
+    [SerializeField, ReadOnly] private bool[] runwayAvailables;
     [SerializeField] private Location[] Garages;
+    [SerializeField, ReadOnly] private bool[] garageAvailables;
 
     [SerializeField, InfoBox("X:Time in hours(0.01 = 1h)\nY:Spawn rate in units per 20 min(0.1 = 1 unit)")]
     private AnimationCurve rushHours;
@@ -95,6 +98,12 @@ public class PilotsManager : MonoBehaviour
         OnAir = new List<Pilot>();
         OnRunway = new List<Pilot>();
         OnGarage = new List<Pilot>();
+        runwayAvailables = new bool[Runways.Length];
+        garageAvailables = new bool[Garages.Length];
+        for (int i = 0; i < runwayAvailables.Length; i++)
+            runwayAvailables[i] = true;
+        for (int i = 0; i < garageAvailables.Length; i++)
+            garageAvailables[i] = true;
         timer = 0;
         missedCalls = 0;
         totalRequests = 0;
@@ -116,13 +125,13 @@ public class PilotsManager : MonoBehaviour
 
             Garages[garage].TryToMovePilotIn(OnGarage[OnGarage.Count-1]);
         }*/
-        if(!testing)
+        if (!testing)
             StartCoroutine(Spawn());
     }
 
     void Update()
     {
-        if(strikes >= MAX_CRASH_STRIKES)
+        if (strikes >= MAX_CRASH_STRIKES)
         {
             //end Game
             Debug.Log("Lose");
@@ -135,6 +144,7 @@ public class PilotsManager : MonoBehaviour
         string s = string.Format("{0,2:D2}:{1,2:D2}", CurrentRealTime.Hours, CurrentRealTime.Minutes);
         if (clock != null)
             clock.text = s;
+
     }
 
     private void FinishShift()
@@ -179,18 +189,18 @@ public class PilotsManager : MonoBehaviour
         for (int i = 0; i < PILOT_CALL_STRIKES; i++)
         {
             Calling.Add(pilot);
-            Coroutine c =  StartCoroutine(Wait(timeWaitingOnCall));
+            Coroutine c = StartCoroutine(Wait(timeWaitingOnCall));
 
-            yield return new WaitUntil(()=>(c== null || !Calling.Contains(pilot)));
+            yield return new WaitUntil(() => (c == null || !Calling.Contains(pilot)));
 
-            if(c!= null)
+            if (c != null)
                 StopCoroutine(c);
 
             if (Calling.Contains(pilot) && PilotOnCall != pilot)
                 Calling.Remove(pilot);
-            else if(initialNeed != pilot.Need)
+            else if (initialNeed != pilot.Need)
                 yield break;
-                
+
             missedCalls++;
             yield return new WaitForSeconds(timeBetweenCalls);
         }
@@ -233,15 +243,20 @@ public class PilotsManager : MonoBehaviour
 
     private void Crash(Pilot p1, Pilot p2)
     {
-        Debug.Log("Crashed 2");
+        if (explotionPrefab != null)
+            Instantiate(explotionPrefab, p1.PilotInScene.transform.position, p1.PilotInScene.transform.rotation);
         RemovePilotFromGame(p1);
 
+        if (explotionPrefab != null)
+            Instantiate(explotionPrefab, p2.PilotInScene.transform.position, p2.PilotInScene.transform.rotation);
         RemovePilotFromGame(p2);
 
         strikes++;
     }
     private void Crash(Pilot p1)
     {
+        if (explotionPrefab != null)
+            Instantiate(explotionPrefab, p1.PilotInScene.transform.position, p1.PilotInScene.transform.rotation);
         RemovePilotFromGame(p1);
 
         strikes++;
@@ -250,42 +265,46 @@ public class PilotsManager : MonoBehaviour
     private void RemovePilotFromGame(Pilot pilot)
     {
         Destroy(pilot.PilotInScene.gameObject);
-        if(Calling.Contains(pilot))
+        if (Calling.Contains(pilot))
             Calling.Remove(pilot);
-        
-        if(OnAir.Contains(pilot))
+
+        if (OnAir.Contains(pilot))
             OnAir.Remove(pilot);
 
-        if(OnRunway.Contains(pilot))
+        if (OnRunway.Contains(pilot))
             OnRunway.Remove(pilot);
 
-        if(OnGarage.Contains(pilot))
+        if (OnGarage.Contains(pilot))
             OnGarage.Remove(pilot);
-        
-        RemoveFromLocation(Runways, pilot);
-        RemoveFromLocation(Garages, pilot);
+
+        RemoveFromLocation(Runways, pilot, runwayAvailables);
+        RemoveFromLocation(Garages, pilot, garageAvailables);
     }
 
-    private void RemoveFromLocation(Location[] locations, Pilot pilot)
+    private void RemoveFromLocation(Location[] locations, Pilot pilot, bool[] avalables)
     {
-        foreach(Location loc in locations)
-        {
-            if(loc.PilotInLocation == pilot)
-                loc.RemovePilot();
-        }
+        int delete = 0;
+        for (int i = 0; i < locations.Length; i++)
+            if (locations[i].PilotInLocation == pilot)
+                delete = i;
+
+        locations[delete].RemovePilot();
+        avalables[delete] = true;
+
     }
 
     public void TryToLand(Pilot pilot)
     {
-        if(OnAir.Contains(pilot))
+        if (OnAir.Contains(pilot))
         {
             OnAir.Remove(pilot);
             OnRunway.Add(pilot);
             //will have to wait for physic object
             int runwayToMove = 0;
-            for(int i = Runways.Count()-1; i>=0; i--)
+            for (int i = Runways.Count() - 1; i >= 0; i--)
             {
-                if(!Runways[i].IsOccupied)
+                print(Runways[i].Name + " is ocupied: " + runwayAvailables[i]);
+                if (runwayAvailables[i])
                 {
                     runwayToMove = i;
                     break;
@@ -293,48 +312,54 @@ public class PilotsManager : MonoBehaviour
             }
 
             pilot.Need = Request.Park;
-            StartCoroutine(MovePlane( Runways, pilot, runwayToMove));
+            StartCoroutine(MovePlane(Runways, pilot, runwayToMove, runwayAvailables));
         }
     }
 
     public void TryToTakeOf(Pilot pilot)
     {
-        if(OnGarage.Contains(pilot))
+        if (OnGarage.Contains(pilot))
         {
             OnGarage.Remove(pilot);
 
-            RemoveFromLocation(Garages, pilot);
+            pilot.Need = Request.Nothing;
+            RemoveFromLocation(Garages, pilot, garageAvailables);
             StartCoroutine(MovePlane(pilot));
         }
     }
 
     public void TryToPark(Pilot pilot, int i)
     {
-        if(OnRunway.Contains(pilot))
+        if (OnRunway.Contains(pilot))
         {
             OnRunway.Remove(pilot);
             OnGarage.Add(pilot);
-            RemoveFromLocation(Runways, pilot);
+
+            RemoveFromLocation(Runways, pilot, runwayAvailables);
             pilot.Need = Request.TakeOff;
-            StartCoroutine(MovePlane( Garages, pilot, i));
+            StartCoroutine(MovePlane(Garages, pilot, i, garageAvailables));
         }
-        
+
     }
 
-    private IEnumerator MovePlane(Location[] locations, Pilot pilot, int index)
+    private IEnumerator MovePlane(Location[] locations, Pilot pilot, int index, bool[] avalables)
     {
-        (bool canMove, bool crash) = locations[index].TryToMovePilotIn(pilot);
+        bool crash = !avalables[index];
+        bool canMove = false;
+        if (!crash)
+            canMove = locations[index].TryToMovePilotIn(pilot);
 
+        avalables[index] = false;
         pilot.PilotInScene.GoToTraget(locations[index].Position.position);
 
         print("can move: " + canMove);
         print("crash: " + crash);
         yield return new WaitForSeconds(0.1f);
-        yield return new WaitUntil(()=>pilot.PilotInScene.InTarget);
+        yield return new WaitUntil(() => pilot.PilotInScene.InTarget);
         print("arrived");
-        if(crash)
+        if (crash)
             Crash(pilot, locations[index].PilotInLocation);
-        else if(!canMove)
+        else if (!canMove)
             Crash(pilot);
         else
             StartCoroutine(NextRequest(pilot));
@@ -345,7 +370,7 @@ public class PilotsManager : MonoBehaviour
     {
         float timeToWait = 0;
         totalRequests++;
-        switch(pilot.Need)
+        switch (pilot.Need)
         {
             case Request.Park:
                 timeToWait = timeInRunWay;
@@ -357,8 +382,8 @@ public class PilotsManager : MonoBehaviour
                 break;
         }
 
-        timeToWait = Random.Range(timeToWait-OFFSET, timeToWait+OFFSET);
-        if(timeToWait < 0)
+        timeToWait = Random.Range(timeToWait - OFFSET, timeToWait + OFFSET);
+        if (timeToWait < 0)
             timeToWait = 0;
 
         yield return new WaitForSeconds(timeToWait);
@@ -378,7 +403,7 @@ public class PilotsManager : MonoBehaviour
         if(!canMove || crash)
             Crash(pilot, locations[index].PilotInLocation);*/
         yield return new WaitForSeconds(0.1f);
-        yield return new WaitUntil(()=>pilot.PilotInScene.InTarget);
+        yield return new WaitUntil(() => pilot.PilotInScene.InTarget);
         RemovePilotFromGame(pilot);
 
         yield break;
