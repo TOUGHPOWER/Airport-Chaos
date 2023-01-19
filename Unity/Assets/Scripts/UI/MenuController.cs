@@ -41,9 +41,9 @@ public class MenuController : MonoBehaviour
             }
             else if(Input.anyKeyDown && menuManager.IsInEvaluation == true) 
             {
-                menuManager.CloseEvaluation();
+                menuManager.LoadGame();
             }
-            else if (Input.GetKeyDown(KeyCode.Alpha1))
+            else if (Input.GetKeyDown(KeyCode.R))
             {
                 menuManager.LoadGame();
             }

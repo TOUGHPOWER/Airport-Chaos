@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Sirenix.OdinInspector;
 
 public class UIManager : MonoBehaviour
 {
@@ -27,6 +28,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Transform scrollArea;
     [field: SerializeField] public List<GameObject> Messages { get; private set; }
 
+    [Button]
    public GameObject CreatePopUp(string message) 
     {
         popPrefab.GetComponentInChildren<TextMeshProUGUI>().text = message;

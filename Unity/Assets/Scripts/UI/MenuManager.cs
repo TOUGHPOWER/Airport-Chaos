@@ -32,15 +32,18 @@ public class MenuManager : MonoBehaviour
     }
     public void CloseEvaluation()
     {
+        Time.timeScale = 1;
         IsInEvaluation = false;
         uIManager.HideEvaluation();
     }
     public void LoadGame() 
     {
+        Time.timeScale = 1;
         SceneManager.LoadScene("Game");
     }
     public void LoadMainMenu()
     {
+        Time.timeScale = 1;
         SceneManager.LoadScene("MainMenu");
     }
     public void Quit() 

@@ -15,6 +15,7 @@ public class PhoneInputs : MonoBehaviour
     private bool testing;
     private bool ringing;
     private bool phoneUp;
+    private bool stop;
 
     [ButtonGroup("1"), LabelText("1")]
     private void B1(){OnMessageArrived("1");}
@@ -52,101 +53,115 @@ public class PhoneInputs : MonoBehaviour
 
     void OnMessageArrived(string msg)
     {
-        switch(msg)
+        if(!stop)
         {
-            case "0":
-            case "1":
-            case "2":
-            case "3":
-            case "4":
-            case "5":
-            case "6":
-            case "7":
-            case "8":
-            case "9":
-            case "*":
-            case "#":
-                controller.Pressed(msg[0]);
-                break;
-            case "up":
-                serialController.SendSerialMessage("stop");
-                phoneUp = true;
-                controller.PickUpPhone();
-                break;
-            case "down":
-                phoneUp = false;
-                controller.PutPhoneDown();
-                break;
+            switch(msg)
+            {
+                case "0":
+                case "1":
+                case "2":
+                case "3":
+                case "4":
+                case "5":
+                case "6":
+                case "7":
+                case "8":
+                case "9":
+                case "*":
+                case "#":
+                    controller.Pressed(msg[0]);
+                    break;
+                case "up":
+                    phoneUp = true;
+                    controller.PickUpPhone();
+                    break;
+                case "down":
+                    phoneUp = false;
+                    controller.PutPhoneDown();
+                    break;
+            }
+            Debug.Log("Message arrived: " + msg);
         }
-        Debug.Log("Message arrived: " + msg);
     }
 
     private void Start()
     {
         phoneUp = false;
+        stop = false;
     }
 
     private void Update()
     {
+        if(controller.Manager.FinishGame && !stop)
+            PauseGame();
 
-        if(controller.Ringing && !ringing && !phoneUp)
+        if(!stop)
         {
-            print("ring");
-            ringing = true;
-            serialController.SendSerialMessage("ring");
-        }else if(!controller.Ringing || phoneUp)
-            ringing = false;
+            if(controller.Ringing && !ringing && !phoneUp)
+            {
+                print("ring");
+                ringing = true;
+                serialController.SendSerialMessage("ring");
+            }else if(!controller.Ringing || phoneUp)
+                ringing = false;
 
-        if(testing && controller.InCall)
-        {
-            if(Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.Keypad0))
+            if(testing && controller.InCall)
             {
-                OnMessageArrived("0");
-            }else if(Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+                if(Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.Keypad0))
+                {
+                    OnMessageArrived("0");
+                }else if(Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+                {
+                    OnMessageArrived("1");
+                }else if(Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+                {
+                    OnMessageArrived("2");
+                }else if(Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
+                {
+                    OnMessageArrived("3");
+                }else if(Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))
+                {
+                    OnMessageArrived("4");
+                }else if(Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
+                {
+                    OnMessageArrived("5");
+                }else if(Input.GetKeyDown(KeyCode.Alpha6) || Input.GetKeyDown(KeyCode.Keypad6))
+                {
+                    OnMessageArrived("6");
+                }else if(Input.GetKeyDown(KeyCode.Alpha7) || Input.GetKeyDown(KeyCode.Keypad7))
+                {
+                    OnMessageArrived("7");
+                }else if(Input.GetKeyDown(KeyCode.Alpha8) || Input.GetKeyDown(KeyCode.Keypad8))
+                {
+                    OnMessageArrived("8");
+                }else if(Input.GetKeyDown(KeyCode.Alpha9) || Input.GetKeyDown(KeyCode.Keypad9))
+                {
+                    OnMessageArrived("9");
+                }else if(Input.GetKeyDown(KeyCode.A))
+                {
+                    OnMessageArrived("*");
+                }else if(Input.GetKeyDown(KeyCode.S))
+                {
+                    OnMessageArrived("#");
+                }
+            }
+
+            if(Input.GetKeyDown(KeyCode.U))
             {
-                OnMessageArrived("1");
-            }else if(Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+                OnMessageArrived("up");
+                
+            }else if(Input.GetKeyDown(KeyCode.P))
             {
-                OnMessageArrived("2");
-            }else if(Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
-            {
-                OnMessageArrived("3");
-            }else if(Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))
-            {
-                OnMessageArrived("4");
-            }else if(Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
-            {
-                OnMessageArrived("5");
-            }else if(Input.GetKeyDown(KeyCode.Alpha6) || Input.GetKeyDown(KeyCode.Keypad6))
-            {
-                OnMessageArrived("6");
-            }else if(Input.GetKeyDown(KeyCode.Alpha7) || Input.GetKeyDown(KeyCode.Keypad7))
-            {
-                OnMessageArrived("7");
-            }else if(Input.GetKeyDown(KeyCode.Alpha8) || Input.GetKeyDown(KeyCode.Keypad8))
-            {
-                OnMessageArrived("8");
-            }else if(Input.GetKeyDown(KeyCode.Alpha9) || Input.GetKeyDown(KeyCode.Keypad9))
-            {
-                OnMessageArrived("9");
-            }else if(Input.GetKeyDown(KeyCode.A))
-            {
-                OnMessageArrived("*");
-            }else if(Input.GetKeyDown(KeyCode.S))
-            {
-                OnMessageArrived("#");
+                OnMessageArrived("down");
+                phoneUp = false;
             }
         }
+    }
 
-        if(Input.GetKeyDown(KeyCode.U))
-        {
-            OnMessageArrived("up");
-            
-        }else if(Input.GetKeyDown(KeyCode.P))
-        {
-            OnMessageArrived("down");
-            phoneUp = false;
-        }
+    public void PauseGame()
+    {
+        serialController.SendSerialMessage("stop");
+        stop = true;
     }
 
 }

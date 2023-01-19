@@ -10,19 +10,20 @@ using System.Linq;
 public class PilotsManager : MonoBehaviour
 {
 
-    private const float START_SHIFT = 20;
-    private const float FINISH_SHIFT = 5;
+
     private const float OFFSET = 10;
     private const int PILOT_CALL_STRIKES = 3;
     private const int MAX_CRASH_STRIKES = 3;
-
+    [SerializeField] private float startShift = 20;
+    [SerializeField] private float finishShift = 5;
     [InfoBox("Tmer in seconds")]
     [SerializeField] private float ShiftTimer;
     [SerializeField] private float timeWaitingOnCall;
     [SerializeField] private float timeBetweenCalls;
     [SerializeField] private float timeInRunWay;
     [SerializeField] private float timeInGarage;
-    public float Score { get => ((totalRequests * 3 - missedCalls) / totalRequests * 3) * 100; }
+    public int Score { get => totalRequests * 3 - missedCalls; }
+    public float ScorePercentil { get => Score / totalRequests * 100; }
     private int missedCalls;
     private int totalRequests;
     private int strikes;
@@ -31,6 +32,7 @@ public class PilotsManager : MonoBehaviour
     private bool testing;
     [SerializeField] private ScenePilot pilotPrefab;
     [SerializeField] private GameObject explotionPrefab;
+    [SerializeField] private UIManager ui;
     [SerializeField] private Transform takeOffLocation;
     [SerializeField] private Transform startLocation;
     [SerializeField] private AirplaneData[] airplanes;
@@ -51,16 +53,17 @@ public class PilotsManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI clock;
     [SerializeField, ShowIf("testing"), Button]
     private void Call() => GeneratePlane(OnAir, startLocation);
+    public bool FinishGame{ get; private set; }
 
     public float ShiftDuration
     {
         get
         {
-            if (START_SHIFT < FINISH_SHIFT)
-                return FINISH_SHIFT - START_SHIFT;
+            if (startShift < finishShift)
+                return finishShift - startShift;
             else
             {
-                return (24 - START_SHIFT) + FINISH_SHIFT;
+                return (24 - startShift) + finishShift;
             }
         }
     }
@@ -77,7 +80,7 @@ public class PilotsManager : MonoBehaviour
     {
         get
         {
-            float currentTime = (START_SHIFT) + ((timer * ShiftDuration) / ShiftTimer);
+            float currentTime = (startShift) + ((timer * ShiftDuration) / ShiftTimer);
 
             return TimeSpan.FromHours(currentTime);
         }
@@ -131,25 +134,38 @@ public class PilotsManager : MonoBehaviour
 
     void Update()
     {
-        if (strikes >= MAX_CRASH_STRIKES)
+        if (strikes >= MAX_CRASH_STRIKES && !FinishGame)
         {
-            //end Game
-            Debug.Log("Lose");
+            FinishShift();
         }
         timer += Time.deltaTime;
-        if (CurrentRealTime.Hours == FINISH_SHIFT)
+        if (CurrentRealTime.Hours >= finishShift && !FinishGame)
         {
             FinishShift();
         }
         string s = string.Format("{0,2:D2}:{1,2:D2}", CurrentRealTime.Hours, CurrentRealTime.Minutes);
-        if (clock != null)
-            clock.text = s;
+        ui.UpdateClock(s);
 
     }
 
     private void FinishShift()
     {
-        Debug.Log("Finish");
+        StopAllCoroutines();
+        FinishGame = true;
+        int day = PlayerPrefs.GetInt("PlayerDay", 1);
+
+        if(strikes < MAX_CRASH_STRIKES)
+            day++;
+        else
+            day = 1;
+
+        PlayerPrefs.SetInt("PlayerDay", day);
+
+        string evaluation = (ScorePercentil > 16) ? (ScorePercentil > 32) ?
+            (ScorePercentil > 49) ? (ScorePercentil > 66) ? (ScorePercentil > 82) ?
+            "A" : "B" : "C" : "D" : "E" : "F";
+
+        ui.ShowEvaluation(Score, day, evaluation);
     }
 
     private IEnumerator Spawn()
@@ -186,12 +202,21 @@ public class PilotsManager : MonoBehaviour
     private IEnumerator Call(Pilot pilot)
     {
         Request initialNeed = pilot.Need;
+
         for (int i = 0; i < PILOT_CALL_STRIKES; i++)
         {
+            yield return new WaitUntil(() => Calling.Count < 5);
+
             Calling.Add(pilot);
+
+            GameObject popUp = ui.CreatePopUp("ID: " + pilot.Number +
+                $"\nMissed Calls: " + i);
+
             Coroutine c = StartCoroutine(Wait(timeWaitingOnCall));
 
             yield return new WaitUntil(() => (c == null || !Calling.Contains(pilot)));
+
+            ui.RemovePopUp(popUp);
 
             if (c != null)
                 StopCoroutine(c);
@@ -232,17 +257,18 @@ public class PilotsManager : MonoBehaviour
                 TryToTakeOf(pilot);
                 break;
             case Request.Park:
-                //parks
+                TryToPark(pilot, 0);
                 break;
             default:
                 break;
         }
 
-        strikes++;
+        IncriseStrikes();
     }
 
     private void Crash(Pilot p1, Pilot p2)
     {
+        print("crash");
         if (explotionPrefab != null)
             Instantiate(explotionPrefab, p1.PilotInScene.transform.position, p1.PilotInScene.transform.rotation);
         RemovePilotFromGame(p1);
@@ -251,7 +277,7 @@ public class PilotsManager : MonoBehaviour
             Instantiate(explotionPrefab, p2.PilotInScene.transform.position, p2.PilotInScene.transform.rotation);
         RemovePilotFromGame(p2);
 
-        strikes++;
+        IncriseStrikes();
     }
     private void Crash(Pilot p1)
     {
@@ -259,7 +285,14 @@ public class PilotsManager : MonoBehaviour
             Instantiate(explotionPrefab, p1.PilotInScene.transform.position, p1.PilotInScene.transform.rotation);
         RemovePilotFromGame(p1);
 
+        IncriseStrikes();
+    }
+
+    private void IncriseStrikes()
+    {
+        missedCalls += 6;
         strikes++;
+        ui.IncreaseStrikes(strikes);
     }
 
     private void RemovePilotFromGame(Pilot pilot)

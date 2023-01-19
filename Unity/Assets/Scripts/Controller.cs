@@ -12,13 +12,13 @@ public class Controller : MonoBehaviour
     public bool InCall { get; private set; }
     private bool checkNeeds;
 
-    [SerializeField]
-    private PilotsManager manager;
-    [SerializeField]
+    [field: SerializeField]
+    public PilotsManager Manager { get; private set;}
+[SerializeField]
     private TextMeshProUGUI numbersPressed;
     [SerializeField] private TTS tts;
-    public bool Ringing{ get => (manager.Calling.Count > 0 && !InCall)||
-        (manager.Calling.Count > 1 && InCall); }
+    public bool Ringing{ get => (Manager.Calling.Count > 0 && !InCall)||
+        (Manager.Calling.Count > 1 && InCall); }
     private char[] lastKeysPressed;
 
 
@@ -38,29 +38,33 @@ public class Controller : MonoBehaviour
 
     void Update()
     {
-        string keysPressed = "";
-        for(int i=0; i < NUM_SAVE_KEYS; i++)
-            keysPressed += lastKeysPressed[i];
-
-        numbersPressed.text = keysPressed;
-
-        /*if (!keysPressed.Contains(NULL_KEY) && !InCall)
+        
+        if(!Manager.FinishGame)
         {
-            if (CheckIfCalled(keysPressed))
+            string keysPressed = "";
+            for(int i=0; i < NUM_SAVE_KEYS; i++)
+                keysPressed += lastKeysPressed[i];
+
+            numbersPressed.text = keysPressed;
+
+            /*if (!keysPressed.Contains(NULL_KEY) && !InCall)
             {
-                Debug.Log("Called " + keysPressed);
-                Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
-                    + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
-                    + manager.PilotOnCall.Need.ToString());
-                InCall = true;
-                ResetRegister();
+                if (CheckIfCalled(keysPressed))
+                {
+                    Debug.Log("Called " + keysPressed);
+                    Debug.Log("Hi, this is " + manager.PilotOnCall.PilotName + " from the "
+                        + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
+                        + manager.PilotOnCall.Need.ToString());
+                    InCall = true;
+                    ResetRegister();
+                }
+            }else */if (InCall && !keysPressed.Contains(NULL_KEY)) 
+            {
+                if(!checkNeeds)
+                    CheckCommand(keysPressed);
+                else
+                    CheckNeeds(keysPressed);
             }
-        }else */if (InCall && !keysPressed.Contains(NULL_KEY)) 
-        {
-            if(!checkNeeds)
-                CheckCommand(keysPressed);
-            else
-                CheckNeeds(keysPressed);
         }
     }
 
@@ -68,10 +72,10 @@ public class Controller : MonoBehaviour
     {
         if(Ringing)
         {
-            manager.PilotOnCall = manager.Calling.First();
-            string text = "Hi, this is " + manager.PilotOnCall.PilotName + " from the "
-                    + manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
-                    + manager.PilotOnCall.Need.ToString();
+            Manager.PilotOnCall = Manager.Calling.First();
+            string text = "Hi, this is " + Manager.PilotOnCall.PilotName + " from the "
+                    + Manager.PilotOnCall.Airplane.AirplaneName + ", Requesting to "
+                    + Manager.PilotOnCall.Need.ToString();
             Debug.Log(text);
             if(tts != null)
                 tts.Say(text);
@@ -86,22 +90,22 @@ public class Controller : MonoBehaviour
 
     private bool CheckIfCalled(string number)
     {
-        foreach (Pilot pilot in manager.OnAir)
+        foreach (Pilot pilot in Manager.OnAir)
             if (pilot.Number == number) 
             {
-                manager.PilotOnCall = pilot;
+                Manager.PilotOnCall = pilot;
                 return true;
             } 
-        foreach (Pilot pilot in manager.OnRunway)
+        foreach (Pilot pilot in Manager.OnRunway)
             if (pilot.Number == number)
             {
-                manager.PilotOnCall = pilot;
+                Manager.PilotOnCall = pilot;
                 return true;
             }
-        foreach (Pilot pilot in manager.OnGarage)
+        foreach (Pilot pilot in Manager.OnGarage)
             if (pilot.Number == number)
             {
-                manager.PilotOnCall = pilot;
+                Manager.PilotOnCall = pilot;
                 return true;
             }
 
@@ -114,7 +118,7 @@ public class Controller : MonoBehaviour
         {
             case "1000":
                 Debug.Log("Repeat Request");
-                string text = "I want to " + manager.PilotOnCall.Need.ToString();
+                string text = "I want to " + Manager.PilotOnCall.Need.ToString();
                 Debug.Log(text);
                 if(tts != null)
                     tts.Say(text);
@@ -122,7 +126,7 @@ public class Controller : MonoBehaviour
                 break;
             case "2000":
                 Debug.Log("Ask name of airplane");
-                string text1 = "I'm piloting the " + manager.PilotOnCall.Airplane.AirplaneName;
+                string text1 = "I'm piloting the " + Manager.PilotOnCall.Airplane.AirplaneName;
                 Debug.Log(text1);
                 if(tts != null)
                     tts.Say(text1);
@@ -130,7 +134,7 @@ public class Controller : MonoBehaviour
                 break;
             case "3000":
                 Debug.Log("Confirm request");
-                if(manager.PilotOnCall.Need == Request.Park)
+                if(Manager.PilotOnCall.Need == Request.Park)
                 {
                     checkNeeds = true;
                     if(tts != null)
@@ -138,21 +142,21 @@ public class Controller : MonoBehaviour
                 }
                 else
                 {
-                    if(manager.PilotOnCall.Need == Request.Land)
-                        manager.TryToLand(manager.PilotOnCall);
+                    if(Manager.PilotOnCall.Need == Request.Land)
+                        Manager.TryToLand(Manager.PilotOnCall);
                     else
-                        manager.TryToTakeOf(manager.PilotOnCall);
+                        Manager.TryToTakeOf(Manager.PilotOnCall);
                     if(tts != null)
                         tts.Say("Roger");
-                    manager.Calling.Remove(manager.PilotOnCall);
+                    Manager.Calling.Remove(Manager.PilotOnCall);
                     InCall = false;
-                    manager.PilotOnCall = null;
+                    Manager.PilotOnCall = null;
                 }
                 break;
             case "4000":
                 InCall = false;
-                manager.DenyRequest(manager.PilotOnCall);
-                manager.PilotOnCall = null;
+                Manager.DenyRequest(Manager.PilotOnCall);
+                Manager.PilotOnCall = null;
                 Debug.Log("Deny Request");
                 if(tts != null)
                     tts.Say("Ok, I'll wait for now");
@@ -176,13 +180,13 @@ public class Controller : MonoBehaviour
             case "*300":
             case "*400":
             case "*500":
-                manager.TryToPark(manager.PilotOnCall,int.Parse(orderDetails[1].ToString())-1);
+                Manager.TryToPark(Manager.PilotOnCall,int.Parse(orderDetails[1].ToString())-1);
                 Debug.Log("Go to the garage.");
                 if(tts != null)
                     tts.Say("Roger");
-                manager.Calling.Remove(manager.PilotOnCall);
+                Manager.Calling.Remove(Manager.PilotOnCall);
                 InCall = false;
-                manager.PilotOnCall = null;
+                Manager.PilotOnCall = null;
                 checkNeeds = false;
                 break;
             default:
