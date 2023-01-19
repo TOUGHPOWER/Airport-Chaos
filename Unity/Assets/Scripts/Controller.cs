@@ -79,6 +79,7 @@ public class Controller : MonoBehaviour
             Debug.Log(text);
             if(tts != null)
                 tts.Say(text);
+            StartCoroutine(ResetView(text));
             InCall = true;
             ResetRegister();
         }
@@ -122,7 +123,7 @@ public class Controller : MonoBehaviour
                 Debug.Log(text);
                 if(tts != null)
                     tts.Say(text);
-                Debug.Log(text);
+                StartCoroutine(ResetView(text));
                 break;
             case "2000":
                 Debug.Log("Ask name of airplane");
@@ -130,6 +131,7 @@ public class Controller : MonoBehaviour
                 Debug.Log(text1);
                 if(tts != null)
                     tts.Say(text1);
+                StartCoroutine(ResetView(text1));
                 Debug.Log(text1);
                 break;
             case "3000":
@@ -151,6 +153,7 @@ public class Controller : MonoBehaviour
                     Manager.Calling.Remove(Manager.PilotOnCall);
                     InCall = false;
                     Manager.PilotOnCall = null;
+                    StartCoroutine(ResetView("Roger"));
                 }
                 break;
             case "4000":
@@ -160,15 +163,24 @@ public class Controller : MonoBehaviour
                 Debug.Log("Deny Request");
                 if(tts != null)
                     tts.Say("Ok, I'll wait for now");
-                
+                StartCoroutine(ResetView("Ok, I'll wait for now"));
                 break;
             default:
                 if(tts != null)
                     tts.Say("I don't recognize that order");
+                StartCoroutine(ResetView("I don't recognize that order"));
+                
                 Debug.Log("I don't recognize that order");
                 break;
         }
         ResetRegister();
+    }
+
+    private IEnumerator ResetView(string s)
+    {
+        yield return new WaitForSeconds(2);
+        if(tts != null && tts.CurrentMessage == s)
+            tts.Say("");
     }
 
     private void CheckNeeds(string orderDetails)
@@ -188,10 +200,12 @@ public class Controller : MonoBehaviour
                 InCall = false;
                 Manager.PilotOnCall = null;
                 checkNeeds = false;
+                StartCoroutine(ResetView("Roger"));
                 break;
             default:
                 if(tts != null)
                     tts.Say("I don't recognize that order");
+                StartCoroutine(ResetView("I don't recognize that order"));
                 Debug.Log("I don't recognize that order");
                 break;
         }
