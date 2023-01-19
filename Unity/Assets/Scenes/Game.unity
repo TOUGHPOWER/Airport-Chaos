@@ -10889,7 +10889,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   portName: COM4
   baudRate: 9600
-  messageListener: {fileID: 1949773837}
+  messageListener: {fileID: 0}
   reconnectionDelay: 1000
   maxUnreadMessages: 1
 --- !u!4 &1107345964
@@ -11905,7 +11905,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1449430387
 MonoBehaviour:
   m_ObjectHideFlags: 0
